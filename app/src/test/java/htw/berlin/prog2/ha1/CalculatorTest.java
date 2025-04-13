@@ -80,15 +80,30 @@ class CalculatorTest {
         calc.pressDotKey();
         calc.pressDigitKey(7);
         calc.pressDotKey();
-        calc.pressDigitKey(8);
+        calc.pressEqualsKey();
 
-        String expected = "1.78";
+        String expected = "8";
         String actual = calc.readScreen();
 
         assertEquals(expected, actual);
     }
 
+    @Test
+    @DisplayName("should calculate x before +")
+    void testMultiplyBeforeAddition() {
+        Calculator calc = new Calculator();
 
-    //TODO hier weitere Tests erstellen
+        calc.pressDigitKey(2);
+        calc.pressBinaryOperationKey("+");
+        calc.pressDigitKey(3);
+        calc.pressEqualsKey();
+        calc.pressBinaryOperationKey("+");
+        calc.pressEqualsKey();
+
+        String expected = "10";
+        String actual = calc.readScreen();
+
+        assertEquals(expected, actual);
+    }
 }
 
