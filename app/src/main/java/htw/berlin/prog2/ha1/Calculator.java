@@ -10,15 +10,25 @@ public class Calculator {
 
     private String screen = "0";
 
-    private double latestValue;
+    private double acc = 0.0;
+    private String pendingAddOp = "";
 
-    private String latestOperation = "";
+    private double pendingMul = 0.0;
+    private String pendingMulOp = "";
+
+    private double lastOperand = 0.0;
+    private String lastOperator = "";
+
+    private boolean justEquals = false;
+    private boolean newEntry = false;
 
     /**
      * @return den aktuellen Bildschirminhalt als String
      */
     public String readScreen() {
+
         return screen;
+
     }
 
     /**
@@ -29,11 +39,26 @@ public class Calculator {
      * @param digit Die Ziffer, deren Taste gedrückt wurde
      */
     public void pressDigitKey(int digit) {
-        if(digit > 9 || digit < 0) throw new IllegalArgumentException();
 
-        if(screen.equals("0") || latestValue == Double.parseDouble(screen)) screen = "";
+        if (digit < 0 || digit > 9)
 
-        screen = screen + digit;
+            throw new IllegalArgumentException();
+
+        if (justEquals) {
+
+            return;
+
+        }
+
+        if (newEntry || screen.equals("0")) {
+
+            screen = "";
+            newEntry = false;
+
+        }
+
+        screen += digit;
+
     }
 
     /**
@@ -45,9 +70,17 @@ public class Calculator {
      * im Ursprungszustand ist.
      */
     public void pressClearKey() {
+
         screen = "0";
-        latestOperation = "";
-        latestValue = 0.0;
+        acc = 0.0;
+        pendingAddOp = "";
+        pendingMul = 0.0;
+        pendingMulOp = "";
+        lastOperand = 0.0;
+        lastOperator = "";
+        justEquals = false;
+        newEntry = false;
+
     }
 
     /**
@@ -57,32 +90,94 @@ public class Calculator {
      * Rechner in den passenden Operationsmodus versetzt.
      * Beim zweiten Drücken nach Eingabe einer weiteren Zahl wird direkt des aktuelle Zwischenergebnis
      * auf dem Bildschirm angezeigt. Falls hierbei eine Division durch Null auftritt, wird "Error" angezeigt.
-     * @param operation "+" für Addition, "-" für Substraktion, "x" für Multiplikation, "/" für Division
+     * @param "+" für Addition, "-" für Substraktion, "x" für Multiplikation, "/" für Division
      */
-    public void pressBinaryOperationKey(String operation)  {
-        latestValue = Double.parseDouble(screen);
-        latestOperation = operation;
+    public void pressBinaryOperationKey(String op) {
+
+        double current = Double.parseDouble(screen);
+        justEquals = false;
+
+        if (op.equals("x") || op.equals("/")) {
+
+            if (pendingMulOp.isEmpty()) {
+
+                pendingMul = current;
+
+            } else {
+
+                pendingMul = evaluate(pendingMul, current, pendingMulOp);
+
+            }
+
+            pendingMulOp = op;
+
+        } else {
+
+            if (!pendingMulOp.isEmpty()) {
+
+                current = evaluate(pendingMul, current, pendingMulOp);
+                pendingMulOp = "";
+
+            }
+
+            if (!pendingAddOp.isEmpty()) {
+
+                current = evaluate(acc, current, pendingAddOp);
+
+            }
+            acc = current;
+            pendingAddOp = op;
+
+            lastOperator = op;
+            lastOperand = current;
+        }
+
+        newEntry = true;
+
     }
+
 
     /**
      * Empfängt den Wert einer gedrückten unären Operationstaste, also eine der drei Operationen
      * Quadratwurzel, Prozent, Inversion, welche nur einen Operanden benötigen.
      * Beim Drücken der Taste wird direkt die Operation auf den aktuellen Zahlenwert angewendet und
      * der Bildschirminhalt mit dem Ergebnis aktualisiert.
-     * @param operation "√" für Quadratwurzel, "%" für Prozent, "1/x" für Inversion
+     * @param "√" für Quadratwurzel, "%" für Prozent, "1/x" für Inversion
      */
-    public void pressUnaryOperationKey(String operation) {
-        latestValue = Double.parseDouble(screen);
-        latestOperation = operation;
-        var result = switch(operation) {
-            case "√" -> Math.sqrt(Double.parseDouble(screen));
-            case "%" -> Double.parseDouble(screen) / 100;
-            case "1/x" -> 1 / Double.parseDouble(screen);
-            default -> throw new IllegalArgumentException();
-        };
-        screen = Double.toString(result);
-        if(screen.equals("NaN")) screen = "Error";
-        if(screen.contains(".") && screen.length() > 11) screen = screen.substring(0, 10);
+    public void pressUnaryOperationKey(String op) {
+
+        double value = Double.parseDouble(screen);
+        double result;
+
+        switch (op) {
+
+            case "√":
+
+                result = Math.sqrt(value);
+                break;
+
+            case "%":
+
+                result = value / 100;
+                break;
+
+            case "1/x":
+
+                result = 1 / value;
+                break;
+
+            default:
+
+                throw new IllegalArgumentException();
+
+        }
+
+        screen = formatResult(result);
+        if (Double.isNaN(result))
+            screen = "Error";
+
+        justEquals = true;
+        newEntry = true;
 
     }
 
@@ -94,7 +189,14 @@ public class Calculator {
      * Beim zweimaligem Drücken, oder wenn bereits ein Trennzeichen angezeigt wird, passiert nichts.
      */
     public void pressDotKey() {
-        if(!screen.contains(".")) screen = screen + ".";
+
+        if (!screen.contains(".")) {
+
+            screen += ".";
+            newEntry = false;
+
+        }
+
     }
 
     /**
@@ -105,7 +207,17 @@ public class Calculator {
      * entfernt und der Inhalt fortan als positiv interpretiert.
      */
     public void pressNegativeKey() {
-        screen = screen.startsWith("-") ? screen.substring(1) : "-" + screen;
+
+        if (screen.startsWith("-")) {
+
+            screen = screen.substring(1);
+
+        } else {
+
+            screen = "-" + screen;
+
+        }
+
     }
 
     /**
@@ -118,16 +230,93 @@ public class Calculator {
      * und das Ergebnis direkt angezeigt.
      */
     public void pressEqualsKey() {
-        var result = switch(latestOperation) {
-            case "+" -> latestValue + Double.parseDouble(screen);
-            case "-" -> latestValue - Double.parseDouble(screen);
-            case "x" -> latestValue * Double.parseDouble(screen);
-            case "/" -> latestValue / Double.parseDouble(screen);
-            default -> throw new IllegalArgumentException();
-        };
-        screen = Double.toString(result);
-        if(screen.equals("Infinity")) screen = "Error";
-        if(screen.endsWith(".0")) screen = screen.substring(0,screen.length()-2);
-        if(screen.contains(".") && screen.length() > 11) screen = screen.substring(0, 10);
+
+        double current = Double.parseDouble(screen);
+
+        if (!pendingMulOp.isEmpty()) {
+
+            current = evaluate(pendingMul, current, pendingMulOp);
+            pendingMulOp = "";
+
+        }
+        double result = current;
+
+        if (!pendingAddOp.isEmpty()) {
+
+            result = evaluate(acc, current, pendingAddOp);
+
+            lastOperator = pendingAddOp;
+            lastOperand = current;
+            pendingAddOp = "";
+            acc = result;
+
+        } else if (justEquals && !lastOperator.isEmpty()) {
+
+            result = evaluate(result, result, lastOperator);
+            acc = result;
+
+        }
+
+        if (Double.isInfinite(result) || Double.isNaN(result)) {
+
+            screen = "Error";
+
+        } else {
+
+            screen = formatResult(result);
+
+        }
+
+        justEquals = true;
+        newEntry = true;
+
     }
+
+    private double evaluate(double a, double b, String op) {
+
+        switch (op) {
+            case "+":
+
+                return a + b;
+
+            case "-":
+
+                return a - b;
+
+            case "x":
+
+                return a * b;
+
+            case "/":
+
+                return b == 0 ? Double.POSITIVE_INFINITY : a / b;
+
+            default:
+
+                throw new IllegalArgumentException();
+
+        }
+
+    }
+
+    private String formatResult(double result) {
+
+        String res = Double.toString(result);
+
+        if (res.endsWith(".0")) {
+
+            res = res.substring(0, res.length() - 2);
+
+        }
+
+        if (res.contains(".") && res.length() > 11) {
+
+            res = res.substring(0, 10);
+
+        }
+
+        return res;
+
+    }
+
 }
