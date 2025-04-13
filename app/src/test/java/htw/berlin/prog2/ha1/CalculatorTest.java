@@ -80,9 +80,27 @@ class CalculatorTest {
         calc.pressDotKey();
         calc.pressDigitKey(7);
         calc.pressDotKey();
+        calc.pressDigitKey(8);
+
+        String expected = "1.78";
+        String actual = calc.readScreen();
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    @DisplayName("should add the result to the result again")
+    void testAdditionAfterAddition() {
+        Calculator calc = new Calculator();
+
+        calc.pressDigitKey(2);
+        calc.pressBinaryOperationKey("+");
+        calc.pressDigitKey(3);
+        calc.pressEqualsKey();
+        calc.pressBinaryOperationKey("+");
         calc.pressEqualsKey();
 
-        String expected = "8";
+        String expected = "10";
         String actual = calc.readScreen();
 
         assertEquals(expected, actual);
@@ -96,12 +114,34 @@ class CalculatorTest {
         calc.pressDigitKey(2);
         calc.pressBinaryOperationKey("+");
         calc.pressDigitKey(3);
+        calc.pressBinaryOperationKey("x");
+        calc.pressDigitKey(2);
         calc.pressEqualsKey();
+
+        String expected = "8";
+        //shows 6
+        String actual = calc.readScreen();
+        //System.out.println("Screen shows: " + actual);
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    @DisplayName("should ignore first number during double addition")
+    void testDoubleAddition() {
+        Calculator calc = new Calculator();
+
+        calc.pressDigitKey(2);
         calc.pressBinaryOperationKey("+");
+        calc.pressDigitKey(3);
+        calc.pressEqualsKey();
+        calc.pressDigitKey(7);
         calc.pressEqualsKey();
 
         String expected = "10";
+        //shows 59
         String actual = calc.readScreen();
+        //System.out.println("Screen shows: " + actual);
 
         assertEquals(expected, actual);
     }
